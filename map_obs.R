@@ -36,7 +36,7 @@ df$latitude <- as.numeric(as.character(df$latitude))
 df$eDNA <- as.numeric(as.character(df$eDNA))
 
 # for number of eDNA
-mybins <- seq(0, 200, by=50)
+mybins <- seq(0, 160, by=40)
 mypalette <- colorBin( palette="YlOrBr", domain=df$eDNA, na.color="transparent", bins=mybins)
 
 # Prepare the text for the tooltip:
