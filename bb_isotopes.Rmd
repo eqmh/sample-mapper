@@ -1,0 +1,37 @@
+---
+title: "bb_isotopes"
+output: html_document
+date: "2023-02-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Description
+
+This is an R Markdown document imports a data table with particulate matter d15N and c13C values, and environmental parameters from Biscayne Bay measured between November of 2021 and January of 2022, and creates data visualizations.
+
+Written by E. Montes
+February 14th, 2023.
+
+## Load libraries
+
+```{r cars, echo=FALSE}
+# Library
+library(leaflet)
+library(tidyverse)
+```
+
+## Data import
+
+```{r pressure, echo=FALSE}
+data <- read.csv("isotopes_compiled.csv", header=TRUE, stringsAsFactors=FALSE, fileEncoding="latin1") %>%
+  na.omit()
+
+lon <- data$longitude
+lat <- data$latitude
+
+station_ls <- unique(data$station)
+```
+
