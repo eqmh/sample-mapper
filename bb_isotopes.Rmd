@@ -21,6 +21,12 @@ February 14th, 2023.
 # Library
 library(leaflet)
 library(tidyverse)
+library(ggplot2)
+  theme_set(theme_bw())
+library(sf)
+library("rnaturalearth")
+library("rnaturalearthdata")
+
 ```
 
 ## Data import
@@ -29,9 +35,104 @@ library(tidyverse)
 data <- read.csv("isotopes_compiled.csv", header=TRUE, stringsAsFactors=FALSE, fileEncoding="latin1") %>%
   na.omit()
 
-lon <- data$longitude
-lat <- data$latitude
-
-station_ls <- unique(data$station)
 ```
 
+## Filter data by date
+
+```{r pressure, echo=FALSE}
+# select 'S' or 'B' and date (11/22/21, 12/20/21, 1/19/22 or 1/20/22)
+df <- filter(data, Date == '1/20/22', Depth..S.B. == 'S') 
+
+lat <- df$latitude
+lon <- df$longitude
+
+d15n <- df$Scale.Normalized.Blank.corrected.d15N..AT.Air.
+d13c <- df$Scale.Normalized.Blank.corrected.d13C..VPDB.
+
+nh4 <- df$NH4..µmol.L.
+no3 <- df$NO3..µmol.L.
+
+# d15_min <- round(min(d15n), 0) - 0.5
+# d15_max <- round(max(d15n), 0) + 0.5
+
+d15_min <- round(min(data$Scale.Normalized.Blank.corrected.d15N..AT.Air.), 0) - 0.5
+d15_max <- round(max(data$Scale.Normalized.Blank.corrected.d15N..AT.Air.), 0) + 0.5
+
+nh4_min <- round(min(data$NH4..µmol.L.), 0)
+# nh4_max <- round(max(data$NH4..µmol.L.), 0)
+nh4_max <- 25
+
+```
+
+## Map d15N data (interactive)
+
+```{r pressure, echo=FALSE}
+# for d15N
+n15_bins <- seq(d15_min, d15_max, by=1.5)
+n15_palette <- colorBin( palette="YlOrBr", domain=d15n, na.color="transparent", bins=n15_bins)
+
+# Prepare the text for the tooltip:
+mytext <- paste(
+  "Station: ", df$station, "<br/>", 
+  "Longitude: ", lon, "<br/>", 
+  "Latitude: ", lat, "<br/>", 
+  "d15N: ", d15n, sep="") %>%
+  lapply(htmltools::HTML)
+
+# Final Map
+m <- leaflet(df) %>% 
+  addTiles()  %>% 
+  setView( lat=25.7, lng=-80.15, zoom=11) %>%
+  addProviderTiles("Esri.WorldImagery") %>%
+  addCircleMarkers(~longitude, ~latitude, 
+                   fillColor = ~n15_palette(d15n), fillOpacity = 0.7, color="white", radius=12, stroke=FALSE,
+                   label = mytext,
+                   labelOptions = labelOptions( style = list("font-weight" = "normal", padding = "3px 8px"), textsize = "13px", direction = "auto")
+  ) %>%
+  addLegend( pal=n15_palette, values=~d15n, opacity=0.9, title = "d15N", position = "bottomright" )
+
+m 
+
+```
+
+## Map other params (interactive)
+
+```{r pressure, echo=FALSE}
+# for NH4
+nh4_bins <- seq(nh4_min, nh4_max, by=5)
+nh4_palette <- colorBin( palette="YlOrBr", domain=nh4, na.color="transparent", bins=nh4_bins)
+
+# Prepare the text for the tooltip:
+mytext <- paste(
+  "Station: ", df$station, "<br/>", 
+  "Longitude: ", lon, "<br/>", 
+  "Latitude: ", lat, "<br/>", 
+  "NH4: ", nh4, sep="") %>%
+  lapply(htmltools::HTML)
+
+# Final Map
+m <- leaflet(df) %>% 
+  addTiles()  %>% 
+  setView( lat=25.7, lng=-80.15, zoom=11) %>%
+  addProviderTiles("Esri.WorldImagery") %>%
+  addCircleMarkers(~longitude, ~latitude, 
+                   fillColor = ~nh4_palette(nh4), fillOpacity = 0.7, color="white", radius=12, stroke=FALSE,
+                   label = mytext,
+                   labelOptions = labelOptions( style = list("font-weight" = "normal", padding = "3px 8px"), textsize = "13px", direction = "auto")
+  ) %>%
+  addLegend( pal=nh4_palette, values=~nh4, opacity=0.9, title = "NH4", position = "bottomright" )
+
+m 
+
+```
+## Create static maps
+```{r pressure, echo=FALSE}
+world <- ne_countries(scale = "medium", returnclass = "sf")
+class(world)
+
+ggplot(data = world) +
+    geom_sf() +
+    coord_sf(xlim = c(-81, -79), ylim = c(25.0, 27), expand = FALSE)
+
+
+```
