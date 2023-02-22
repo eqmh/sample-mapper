@@ -41,7 +41,7 @@ data <- read.csv("isotopes_compiled.csv", header=TRUE, stringsAsFactors=FALSE, f
 
 ```{r pressure, echo=FALSE}
 # select 'S' or 'B' and date (11/22/21, 12/20/21, 1/19/22 or 1/20/22)
-df <- filter(data, Date == '1/20/22', Depth..S.B. == 'S') 
+df <- filter(data, Date == '11/22/21', Depth..S.B. == 'S') 
 
 lat <- df$latitude
 lon <- df$longitude
@@ -136,3 +136,38 @@ ggplot(data = world) +
 
 
 ```
+
+## Linear fit plots
+```{r pressure, echo=FALSE}
+
+# select 'S' or 'B' and date (11/22/21, 12/20/21, 1/19/22 or 1/20/22)
+df <- filter(data, Date == '1/20/22', Depth..S.B. == 'S') 
+
+d15n <- df$Scale.Normalized.Blank.corrected.d15N..AT.Air.
+nh4 <- df$NH4..µmol.L.
+
+d15n_min <- min(df$Scale.Normalized.Blank.corrected.d15N..AT.Air.)-.5
+d15n_max <- max(df$Scale.Normalized.Blank.corrected.d15N..AT.Air.)+.5
+nh4_min <- 0
+nh4_max <- max(df$NH4..µmol.L.)+.5
+
+mm <- ggplot(df, aes(x = nh4, y = d15n)) +
+# ggplot(data, aes(x = data$NH4..µmol.L., y = data$Scale.Normalized.Blank.corrected.d15N..AT.Air.)) + 
+  geom_point(size = 3) +
+  stat_smooth(method = "lm", col = "red") +
+  # geom_abline(slope=1, intercept = 0, linetype="dashed") +
+  xlim(nh4_min, nh4_max) +
+  ylim(d15n_min, d15n_max) +
+  scale_x_continuous(breaks = seq(0, nh4_max, by = 1)) +
+  scale_y_continuous(breaks = seq(d15n_min, d15n_max, by = 0.5)) +
+  theme(axis.title.x = element_text(size=20)) +
+  theme(axis.title.y = element_text(size=20)) +
+  theme(text = element_text(size = 20)) +
+  xlab("NH4") +
+  ylab("d15N")
+mm
+```
+
+
+
+
