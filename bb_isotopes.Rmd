@@ -26,7 +26,8 @@ library(ggplot2)
 library(sf)
 library("rnaturalearth")
 library("rnaturalearthdata")
-
+# install.packages("CCA")
+library(CCA)
 ```
 
 ## Data import
@@ -141,33 +142,79 @@ ggplot(data = world) +
 ```{r pressure, echo=FALSE}
 
 # select 'S' or 'B' and date (11/22/21, 12/20/21, 1/19/22 or 1/20/22)
-df <- filter(data, Date == '1/20/22', Depth..S.B. == 'S') 
+# df <- filter(data, Date == '12/20/21', Depth..S.B. == 'S') 
+df <- data
 
 d15n <- df$Scale.Normalized.Blank.corrected.d15N..AT.Air.
-nh4 <- df$NH4..µmol.L.
+var <- df$DIN..µmol.L.
 
 d15n_min <- min(df$Scale.Normalized.Blank.corrected.d15N..AT.Air.)-.5
 d15n_max <- max(df$Scale.Normalized.Blank.corrected.d15N..AT.Air.)+.5
-nh4_min <- 0
-nh4_max <- max(df$NH4..µmol.L.)+.5
+var_min <- 0
+var_max <- max(var)+.5
 
-mm <- ggplot(df, aes(x = nh4, y = d15n)) +
+mm <- ggplot(df, aes(x = var, y = d15n)) +
 # ggplot(data, aes(x = data$NH4..µmol.L., y = data$Scale.Normalized.Blank.corrected.d15N..AT.Air.)) + 
   geom_point(size = 3) +
   stat_smooth(method = "lm", col = "red") +
   # geom_abline(slope=1, intercept = 0, linetype="dashed") +
-  xlim(nh4_min, nh4_max) +
+  xlim(var_min, var_max) +
   ylim(d15n_min, d15n_max) +
-  scale_x_continuous(breaks = seq(0, nh4_max, by = 1)) +
+  scale_x_continuous(breaks = seq(0, var_max, by = 1)) +
   scale_y_continuous(breaks = seq(d15n_min, d15n_max, by = 0.5)) +
   theme(axis.title.x = element_text(size=20)) +
   theme(axis.title.y = element_text(size=20)) +
   theme(text = element_text(size = 20)) +
-  xlab("NH4") +
+  xlab("VARIABLE") +
   ylab("d15N")
 mm
 ```
 
 
+## CCA
+```{r pressure, echo=FALSE}
+X <- data %>% 
+  select(Scale.Normalized.Blank.corrected.d15N..AT.Air.) %>%
+  scale()
+
+Y <- data %>%
+  select(DIN..µmol.L., PO4..µmol.L., Chl.a.lab..ug.L., Temp..C.) %>%
+  scale()
+head(Y)
+
+cc_results <- cancor(X,Y)
+str(cc_results)
+cc_results$xcoef
+cc_results$ycoef
+cc_results$cor
+
+CC1_X <- as.matrix(X) %*% cc_results$xcoef[, 1]
+CC1_Y <- as.matrix(Y) %*% cc_results$ycoef[, 1]
+
+CC2_X <- as.matrix(X) %*% cc_results$xcoef[, 1]
+CC2_Y <- as.matrix(Y) %*% cc_results$ycoef[, 2]
+
+cor(CC1_X,CC1_Y)
+
+cca_df <- data %>% 
+  mutate(CC1_X=CC1_X,
+         CC1_Y=CC1_Y,
+         CC2_X=CC2_X,
+         CC2_Y=CC2_Y)
+
+cca_df %>% 
+  ggplot(aes(x=Location,y=CC1_Y, color=Location))+
+  geom_boxplot(width=0.5)+
+  geom_jitter(width=0.15)
+
+cca_df %>% 
+  ggplot(aes(x=CC1_X,y=CC1_Y, color=Location))+
+  geom_point()
+
+cca_df %>% 
+  ggplot(aes(x=CC2_X,y=CC2_Y, color=Location))+
+  geom_point()
+
+```
 
 
