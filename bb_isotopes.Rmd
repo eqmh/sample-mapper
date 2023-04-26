@@ -17,17 +17,10 @@ February 14th, 2023.
 
 ## Load libraries
 
-```{r cars, echo=FALSE}
+```{r, echo=FALSE}
 # Library
 library(leaflet)
 library(tidyverse)
-library(ggplot2)
-  theme_set(theme_bw())
-library(sf)
-library("rnaturalearth")
-library("rnaturalearthdata")
-# install.packages("CCA")
-library(CCA)
 ```
 
 ## Data import
@@ -40,7 +33,7 @@ data <- read.csv("isotopes_compiled.csv", header=TRUE, stringsAsFactors=FALSE, f
 
 ## Filter data by date
 
-```{r pressure, echo=FALSE}
+```{r, echo=FALSE}
 # select 'S' or 'B' and date (11/22/21, 12/20/21, 1/19/22 or 1/20/22)
 df <- filter(data, Date == '11/22/21', Depth..S.B. == 'S') 
 
@@ -67,7 +60,7 @@ nh4_max <- 25
 
 ## Map d15N data (interactive)
 
-```{r pressure, echo=FALSE}
+```{r, echo=FALSE}
 # for d15N
 n15_bins <- seq(d15_min, d15_max, by=1.5)
 n15_palette <- colorBin( palette="YlOrBr", domain=d15n, na.color="transparent", bins=n15_bins)
@@ -98,7 +91,7 @@ m
 
 ## Map other params (interactive)
 
-```{r pressure, echo=FALSE}
+```{r, echo=FALSE}
 # for NH4
 nh4_bins <- seq(nh4_min, nh4_max, by=5)
 nh4_palette <- colorBin( palette="YlOrBr", domain=nh4, na.color="transparent", bins=nh4_bins)
@@ -126,8 +119,13 @@ m <- leaflet(df) %>%
 m 
 
 ```
+
 ## Create static maps
-```{r pressure, echo=FALSE}
+```{r, echo=FALSE}
+library(sf)
+library("rnaturalearth")
+library("rnaturalearthdata")
+
 world <- ne_countries(scale = "medium", returnclass = "sf")
 class(world)
 
@@ -135,11 +133,12 @@ ggplot(data = world) +
     geom_sf() +
     coord_sf(xlim = c(-81, -79), ylim = c(25.0, 27), expand = FALSE)
 
-
 ```
 
 ## Linear fit plots
-```{r pressure, echo=FALSE}
+```{r, echo=FALSE}
+library(ggplot2)
+  theme_set(theme_bw())
 
 # select 'S' or 'B' and date (11/22/21, 12/20/21, 1/19/22 or 1/20/22)
 # df <- filter(data, Date == '12/20/21', Depth..S.B. == 'S') 
@@ -172,7 +171,10 @@ mm
 
 
 ## CCA
-```{r pressure, echo=FALSE}
+```{r, echo=FALSE}
+# install.packages("CCA")
+library(CCA)
+
 X <- data %>% 
   select(Scale.Normalized.Blank.corrected.d15N..AT.Air.) %>%
   scale()
