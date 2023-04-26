@@ -173,7 +173,8 @@ mm
 ## CCA
 ```{r, echo=FALSE}
 # install.packages("CCA")
-library(CCA)
+# library(CCA)
+library(ggplot2)
 
 X <- data %>% 
   select(Scale.Normalized.Blank.corrected.d15N..AT.Air.) %>%
