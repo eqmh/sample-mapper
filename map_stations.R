@@ -42,7 +42,7 @@ m <- leaflet(df2_with_earliest_dates) %>%
 
 # Convert color_palette to a function
 color_palette <- colorNumeric(
-  palette = "Reds",
+  palette = "RdYlBu",
   domain = df2_with_earliest_dates$earliest_date
 )
 
@@ -63,7 +63,7 @@ m <- m %>% addLegend(
   position = "bottomright",
   pal = color_palette,
   values = ~earliest_date,
-  title = "Decimal Year",
+  title = "Start year",
   opacity = 1
 )
 
