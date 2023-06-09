@@ -15,7 +15,7 @@ df1 <- read.csv("AOML_SFP_regional_WQ_surface_v16.csv", header = TRUE)
 df2 <- read.csv("SFER_stations.csv", header = TRUE)
 
 # Convert 'Date' column in df1 to Date format
-df1$Date <- as.Date(df1$Date, format = "%m/%d/%Y")
+df1$Date <- as.Date(df1$Date, format = "%m/%d/%Y") # Make sure the 'Date' column in AOML_SFP_regional_WQ_surface_v16.csv has the format m/d/yyyy. 
 
 
 # Group df1 by 'Station' and get the minimum date for each group
