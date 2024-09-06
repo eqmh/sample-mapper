@@ -4,10 +4,6 @@ output: html_document
 date: "2023-02-14"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 ## Description
 
 This is an R Markdown document imports a data table with particulate matter d15N and c13C values, and environmental parameters from Biscayne Bay measured between November of 2021 and January of 2022, and creates data visualizations.
@@ -15,124 +11,160 @@ This is an R Markdown document imports a data table with particulate matter d15N
 Written by E. Montes
 February 14th, 2023.
 
-## Load libraries
+## Load libraries import data
 
 ```{r, echo=FALSE}
 # Library
 library(leaflet)
 library(tidyverse)
-```
 
-## Data import
-
-```{r pressure, echo=FALSE}
 data <- read.csv("isotopes_compiled.csv", header=TRUE, stringsAsFactors=FALSE, fileEncoding="latin1") %>%
   na.omit()
 
 ```
 
-## Filter data by date
 
-```{r, echo=FALSE}
-# select 'S' or 'B' and date (11/22/21, 12/20/21, 1/19/22 or 1/20/22)
-df <- filter(data, Date == '11/22/21', Depth..S.B. == 'S') 
+# Map mean values group by Station for selected parameters
+```{r}
+library(dplyr)
+library(leaflet)
+library(htmlwidgets)
 
-lat <- df$latitude
-lon <- df$longitude
+# Step 1: Calculate the mean NH4 values by Station
+df_mean <- data %>%
+  group_by(station, longitude, latitude) %>%  # Group by Station and coordinates
+  summarise(d15n = mean(Scale.Normalized.Blank.corrected.d15N..AT.Air., na.rm = TRUE))  # Calculate the mean NH4
 
-d15n <- df$Scale.Normalized.Blank.corrected.d15N..AT.Air.
-d13c <- df$Scale.Normalized.Blank.corrected.d13C..VPDB.
+# Step 2: Create a color palette for NH4 values
+nh4_palette <- colorNumeric(palette = "YlOrRd", domain = df_mean$d15n)
 
-nh4 <- df$NH4..µmol.L.
-no3 <- df$NO3..µmol.L.
-
-# d15_min <- round(min(d15n), 0) - 0.5
-# d15_max <- round(max(d15n), 0) + 0.5
-
-d15_min <- round(min(data$Scale.Normalized.Blank.corrected.d15N..AT.Air.), 0) - 0.5
-d15_max <- round(max(data$Scale.Normalized.Blank.corrected.d15N..AT.Air.), 0) + 0.5
-
-nh4_min <- round(min(data$NH4..µmol.L.), 0)
-# nh4_max <- round(max(data$NH4..µmol.L.), 0)
-nh4_max <- 25
-
-```
-
-## Map d15N data (interactive)
-
-```{r, echo=FALSE}
-# for d15N
-n15_bins <- seq(d15_min, d15_max, by=1.5)
-n15_palette <- colorBin( palette="YlOrBr", domain=d15n, na.color="transparent", bins=n15_bins)
-
-# Prepare the text for the tooltip:
+# Step 3: Create custom labels to show Station and NH4 mean values
 mytext <- paste(
-  "Station: ", df$station, "<br/>", 
-  "Longitude: ", lon, "<br/>", 
-  "Latitude: ", lat, "<br/>", 
-  "d15N: ", d15n, sep="") %>%
+  "Station: ", df_mean$Station, "<br/>",
+  "Mean NH4: ", round(df_mean$d15n, 2), " µmol/L", sep=""
+) %>%
   lapply(htmltools::HTML)
 
-# Final Map
-m <- leaflet(df) %>% 
+# Step 4: Plot the leaflet map with circle markers
+m <- leaflet(df_mean) %>% 
   addTiles()  %>% 
-  setView( lat=25.7, lng=-80.15, zoom=11) %>%
+  setView(lat = 25.7, lng = -80.15, zoom = 11) %>%
   addProviderTiles("Esri.WorldImagery") %>%
-  addCircleMarkers(~longitude, ~latitude, 
-                   fillColor = ~n15_palette(d15n), fillOpacity = 0.7, color="white", radius=12, stroke=FALSE,
-                   label = mytext,
-                   labelOptions = labelOptions( style = list("font-weight" = "normal", padding = "3px 8px"), textsize = "13px", direction = "auto")
+  addCircleMarkers(
+    ~longitude, ~latitude, 
+    fillColor = ~nh4_palette(d15n), fillOpacity = 0.9, color = "black", radius = 8, stroke = FALSE,
+    label = mytext,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "13px", direction = "auto")
   ) %>%
-  addLegend( pal=n15_palette, values=~d15n, opacity=0.9, title = "d15N", position = "bottomright" )
+  addLegend(
+    pal = nh4_palette, values = ~d15n, opacity = 0.9, 
+    title = "d15N (‰)", position = "bottomright"
+  )
 
-m 
+# Display the map
+m
+
+# Save the leaflet map as an HTML file
+saveWidget(m, file = "leaflet_map.html")
 
 ```
 
-## Map other params (interactive)
+# PCA plot for isotopes
+```{r}
+library(ggplot2)
+library(dplyr)
 
-```{r, echo=FALSE}
-# for NH4
-nh4_bins <- seq(nh4_min, nh4_max, by=5)
-nh4_palette <- colorBin( palette="YlOrBr", domain=nh4, na.color="transparent", bins=nh4_bins)
+# Define the desired variable (choose one of the three options)
+# desired_variable <- "Scale.Normalized.Blank.corrected.d15N..AT.Air."
+desired_variable <- "Scale.Normalized.Blank.corrected.d13C..VPDB." 
 
-# Prepare the text for the tooltip:
-mytext <- paste(
-  "Station: ", df$station, "<br/>", 
-  "Longitude: ", lon, "<br/>", 
-  "Latitude: ", lat, "<br/>", 
-  "NH4: ", nh4, sep="") %>%
-  lapply(htmltools::HTML)
+# select the relevant columns and scale the selected variable
+df_selected <- data %>% 
+  select(all_of(desired_variable), Location, Depth = `Depth..S.B.`) %>%
+  mutate(across(all_of(desired_variable), scale))
 
-# Final Map
-m <- leaflet(df) %>% 
-  addTiles()  %>% 
-  setView( lat=25.7, lng=-80.15, zoom=11) %>%
-  addProviderTiles("Esri.WorldImagery") %>%
-  addCircleMarkers(~longitude, ~latitude, 
-                   fillColor = ~nh4_palette(nh4), fillOpacity = 0.7, color="white", radius=12, stroke=FALSE,
-                   label = mytext,
-                   labelOptions = labelOptions( style = list("font-weight" = "normal", padding = "3px 8px"), textsize = "13px", direction = "auto")
-  ) %>%
-  addLegend( pal=nh4_palette, values=~nh4, opacity=0.9, title = "NH4", position = "bottomright" )
+# Perform PCA on the selected variable
+pca_result <- prcomp(df_selected[[desired_variable]], center = TRUE, scale. = TRUE)
 
-m 
+# Extract PC1
+df_selected$PC1 <- pca_result$x[, 1]
+
+# Create boxplot for PC1 by Location (Inshore vs Offshore)
+ggplot(df_selected, aes(x = Location, y = PC1, color = Location)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Single boxplot
+  geom_jitter(width = 0.2, aes(shape = Depth), size = 3) +  # Add points with shape for Depth (S/B)
+  labs(title = paste("Boxplot of PC1 for", desired_variable, ": Inshore vs Offshore"), 
+       x = "Location", 
+       y = "PC1") +
+  theme_minimal()
 
 ```
 
-## Create static maps
-```{r, echo=FALSE}
-library(sf)
-library("rnaturalearth")
-library("rnaturalearthdata")
+# PCA plot with multiple variables
+```{r}
+library(ggplot2)
+library(dplyr)
 
-world <- ne_countries(scale = "medium", returnclass = "sf")
-class(world)
+# Select relevant columns (multiple variables for PCA)
+df_selected <- data %>%
+  select(DIN = DIN..µmol.L., 
+         PO4 = PO4..µmol.L., 
+         Chl = Chl.a.lab..ug.L., 
+         Location, 
+         Depth = Depth..S.B.) %>%
+  mutate(across(c(DIN, PO4, Chl), scale))  # Scale the variables
 
-ggplot(data = world) +
-    geom_sf() +
-    coord_sf(xlim = c(-81, -79), ylim = c(25.0, 27), expand = FALSE)
+# Perform PCA on the selected variables
+pca_result <- prcomp(df_selected %>% select(DIN, PO4, Chl), 
+                     center = TRUE, scale. = TRUE)
 
+# Extract PC1
+df_selected$PC1 <- pca_result$x[, 1]
+df_selected$PC2 <- pca_result$x[, 2]
+
+# Get the percentage of variance explained by PC1
+pc1_var_explained <- round(summary(pca_result)$importance[2, 1] * 100, 2)  # Variance in percentage for PC1
+
+# Create boxplot for PC1 by Location (Inshore vs Offshore)
+p <- ggplot(df_selected, aes(x = Location, y = PC1, color = Location)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Remove outliers
+  geom_jitter(width = 0.2, aes(shape = Depth), size = 3) +  # Add points with shape for Depth (S/B)
+  labs(title = "Boxplot of PC1: Inshore vs Offshore (Multiple Variables)", 
+       x = "Location", 
+       y = paste0("PC1 (", pc1_var_explained, "% variance explained)")) +
+  theme_minimal()
+p
+
+# Save the plot as an SVG file
+ggsave("boxplot_pc1.svg", plot = p, width = 8, height = 6, device = "svg")
+
+```
+
+# Plot variables inshore versus offshore
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Assuming df is your data frame, select relevant columns
+df_selected <- data %>% 
+  select(d13C = Scale.Normalized.Blank.corrected.d13C..VPDB., Location, Depth = Depth..S.B.)
+
+# Create boxplot for chl-a by Location (Inshore vs Offshore), with point shape based on Depth (S or B)
+bxplot <- ggplot(df_selected, aes(x = Location, y = d13C, color = Location)) +
+  geom_boxplot(width = 0.5, outlier.shape = NA) +  # Boxplot for inshore vs offshore
+  geom_jitter(width = 0.2, aes(shape = Depth), size = 3) +  # Add points with shape for Depth (S or B)
+  labs(title = "Boxplot of chl-a: Inshore vs Offshore (Shape by Depth)", 
+       x = "Location", 
+       # y = bquote("Ammonium (" ~ mu * mol ~ L^-1 ~ ")")) +
+       # y = bquote("Chl-a (" ~ mu * g ~ L^-1 ~ ")")) +
+       y = "d13C") + 
+  theme_minimal()
+bxplot
+
+ggsave("d13C_inshore-offshore.svg", plot = bxplot, width = 8, height = 6, device = "svg")
+# ggsave("chla_inshore-offshore.svg", plot = bxplot, width = 8, height = 6, device = "svg")
 ```
 
 ## Linear fit plots
@@ -145,7 +177,7 @@ library(ggplot2)
 df <- data
 
 d15n <- df$Scale.Normalized.Blank.corrected.d15N..AT.Air.
-var <- df$DIN..µmol.L.
+var <- df$Chl.a..ug.L.
 
 d15n_min <- min(df$Scale.Normalized.Blank.corrected.d15N..AT.Air.)-.5
 d15n_max <- max(df$Scale.Normalized.Blank.corrected.d15N..AT.Air.)+.5
@@ -206,7 +238,7 @@ cca_df <- data %>%
          CC2_Y=CC2_Y)
 
 cca_df %>% 
-  ggplot(aes(x=Location,y=CC1_Y, color=Location))+
+  ggplot(aes(x=Location,y=CC1_X, color=Location))+
   geom_boxplot(width=0.5)+
   geom_jitter(width=0.15)
 
@@ -219,5 +251,3 @@ cca_df %>%
   geom_point()
 
 ```
-
-
